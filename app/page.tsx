@@ -95,7 +95,7 @@ export default function HomePage() {
               </h1>
               <p className="text-sm text-gray-600 mt-1">
                 {schedule.project_id && `${schedule.project_id} • `}
-                Updated: {String(schedule.updated)}
+                Updated: {formatDate(schedule.updated)}
               </p>
             </div>
             <div className="flex gap-4">
