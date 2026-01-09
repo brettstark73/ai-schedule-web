@@ -60,19 +60,7 @@ export class ScheduleEditor {
 
   private initPatterns(): CommandPattern[] {
     return [
-      // Progress updates
-      {
-        pattern: /(?:set\s+)?(\w+)\s+(?:is\s+|to\s+|progress\s+)?(\d+)%?/i,
-        intent: 'set_progress',
-        base_confidence: 0.95
-      },
-      {
-        pattern: /(\w+)\s+progress\s+(\d+)/i,
-        intent: 'set_progress',
-        base_confidence: 0.95
-      },
-
-      // Mark complete
+      // Mark complete (high priority)
       {
         pattern: /mark\s+(\w+)\s+(?:as\s+)?complete/i,
         intent: 'mark_complete',
@@ -89,7 +77,7 @@ export class ScheduleEditor {
         base_confidence: 0.95
       },
 
-      // Extend duration
+      // Duration changes (before progress to avoid conflicts)
       {
         pattern: /extend\s+(\w+)\s+by\s+(\d+)\s*(?:days?|d)/i,
         intent: 'extend_duration',
@@ -105,8 +93,6 @@ export class ScheduleEditor {
         intent: 'extend_duration',
         base_confidence: 0.95
       },
-
-      // Shorten duration
       {
         pattern: /shorten\s+(\w+)\s+by\s+(\d+)\s*(?:days?|d)/i,
         intent: 'shorten_duration',
@@ -117,29 +103,37 @@ export class ScheduleEditor {
         intent: 'shorten_duration',
         base_confidence: 0.98
       },
-
-      // Set duration
       {
-        pattern: /set\s+(\w+)\s+(?:to\s+)?(\d+)\s*(?:days?|d)/i,
+        pattern: /set\s+(\w+)\s+(?:to\s+|duration\s+)?(\d+)\s+(?:days?|d)/i,
         intent: 'set_duration',
-        base_confidence: 0.95
+        base_confidence: 0.96
       },
       {
-        pattern: /(\w+)\s+duration\s+(\d+)/i,
+        pattern: /(\w+)\s+duration\s+(?:is\s+)?(\d+)\s*(?:days?|d)?/i,
         intent: 'set_duration',
         base_confidence: 0.95
       },
 
-      // Add risk/note
+      // Progress updates (require % or "progress" keyword to avoid conflicts)
       {
-        pattern: /(?:risk\s+for\s+|flag\s+)?(\w+)\s+(?:at\s+risk:?\s*)?(.+)/i,
-        intent: 'add_risk',
+        pattern: /(?:set\s+)?(\w+)\s+(?:is\s+|to\s+)?(\d+)%/i,
+        intent: 'set_progress',
+        base_confidence: 0.95
+      },
+      {
+        pattern: /(\w+)\s+progress\s+(?:is\s+)?(\d+)%?/i,
+        intent: 'set_progress',
+        base_confidence: 0.95
+      },
+      {
+        pattern: /set\s+(\w+)\s+to\s+(\d+)(?!\s*days?)/i,
+        intent: 'set_progress',
         base_confidence: 0.85
       },
       {
-        pattern: /(\w+)\s+is\s+at\s+risk\s*(?::?\s*(.+))?/i,
-        intent: 'add_risk',
-        base_confidence: 0.90
+        pattern: /(\w+)\s+is\s+(\d+)(?!\s*days?)/i,
+        intent: 'set_progress',
+        base_confidence: 0.80
       },
 
       // Set actual dates
@@ -178,6 +172,23 @@ export class ScheduleEditor {
         pattern: /(\w+)\s+no\s+earlier\s+than\s+(\d{4}-\d{2}-\d{2})/i,
         intent: 'add_constraint',
         base_confidence: 0.98
+      },
+
+      // Add risk/note (more specific patterns, late in list to avoid false matches)
+      {
+        pattern: /risk\s+for\s+(\w+)(?::\s*(.+))?/i,
+        intent: 'add_risk',
+        base_confidence: 0.90
+      },
+      {
+        pattern: /(\w+)\s+(?:is\s+)?at\s+risk(?::\s*(.+))?/i,
+        intent: 'add_risk',
+        base_confidence: 0.90
+      },
+      {
+        pattern: /flag\s+(\w+)(?:\s+as\s+)?at\s+risk(?::\s*(.+))?/i,
+        intent: 'add_risk',
+        base_confidence: 0.90
       },
 
       // What-if queries
@@ -224,9 +235,16 @@ export class ScheduleEditor {
         let task_id: string | undefined;
         let task_name: string | undefined;
 
-        // Extract task ID from first group
-        if (match[1]) {
-          const taskIdCandidate = match[1].toUpperCase();
+        // Extract task ID - usually first group, but handle special cases
+        let taskIdGroupIndex = 1;
+
+        // Special case: "add N days to TASK" - task is in group 2
+        if (intent === 'extend_duration' && pattern.toString().includes('add') && pattern.toString().includes('to')) {
+          taskIdGroupIndex = 2;
+        }
+
+        if (match[taskIdGroupIndex]) {
+          const taskIdCandidate = match[taskIdGroupIndex].toUpperCase();
 
           // Check exact match in tasks
           if (this.findTaskInYAML(taskIdCandidate)) {

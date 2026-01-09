@@ -1,0 +1,51 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Schedule Editor" [level=1] [ref=e6]
+        - link "Back to Viewer" [ref=e7] [cursor=pointer]:
+          - /url: /
+    - main [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - heading "Natural Language Commands" [level=2] [ref=e12]
+            - textbox "e.g., SW_IMPL is 75%" [ref=e14]: something random
+            - button "Parse Command" [active] [ref=e15] [cursor=pointer]
+            - generic [ref=e16]:
+              - heading "Example Commands:" [level=3] [ref=e17]
+              - generic [ref=e18]:
+                - generic [ref=e19]:
+                  - text: •
+                  - code [ref=e20]: SW_IMPL is 75%
+                - generic [ref=e21]:
+                  - text: •
+                  - code [ref=e22]: mark SW_DESIGN complete
+                - generic [ref=e23]:
+                  - text: •
+                  - code [ref=e24]: extend HW_PROTO by 5 days
+                - generic [ref=e25]:
+                  - text: •
+                  - code [ref=e26]: "HW_PROTO is at risk: vendor delayed"
+                - generic [ref=e27]:
+                  - text: •
+                  - code [ref=e28]: SW_IMPL started 2025-03-28
+                - generic [ref=e29]:
+                  - text: •
+                  - code [ref=e30]: show critical path
+          - generic [ref=e31]:
+            - heading "Parsed Command" [level=2] [ref=e32]
+            - generic [ref=e33]:
+              - generic [ref=e34]: "Intent: add_risk"
+              - generic [ref=e35]:
+                - text: "Confidence:"
+                - generic [ref=e36]: 85%
+              - generic [ref=e37]: "Value: random"
+        - generic [ref=e39]: Medium confidence (85%). Please confirm.
+  - button "Open Next.js Dev Tools" [ref=e45] [cursor=pointer]:
+    - img [ref=e46]
+  - alert [ref=e49]
+```

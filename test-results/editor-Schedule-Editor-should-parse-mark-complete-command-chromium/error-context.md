@@ -1,0 +1,66 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Schedule Editor" [level=1] [ref=e6]
+        - link "Back to Viewer" [ref=e7] [cursor=pointer]:
+          - /url: /
+    - main [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - heading "Natural Language Commands" [level=2] [ref=e12]
+            - textbox "e.g., SW_IMPL is 75%" [ref=e14]: mark SW_DESIGN complete
+            - button "Parse Command" [active] [ref=e15] [cursor=pointer]
+            - generic [ref=e16]:
+              - heading "Example Commands:" [level=3] [ref=e17]
+              - generic [ref=e18]:
+                - generic [ref=e19]:
+                  - text: •
+                  - code [ref=e20]: SW_IMPL is 75%
+                - generic [ref=e21]:
+                  - text: •
+                  - code [ref=e22]: mark SW_DESIGN complete
+                - generic [ref=e23]:
+                  - text: •
+                  - code [ref=e24]: extend HW_PROTO by 5 days
+                - generic [ref=e25]:
+                  - text: •
+                  - code [ref=e26]: "HW_PROTO is at risk: vendor delayed"
+                - generic [ref=e27]:
+                  - text: •
+                  - code [ref=e28]: SW_IMPL started 2025-03-28
+                - generic [ref=e29]:
+                  - text: •
+                  - code [ref=e30]: show critical path
+          - generic [ref=e31]:
+            - heading "Parsed Command" [level=2] [ref=e32]
+            - generic [ref=e33]:
+              - generic [ref=e34]: "Intent: mark_complete"
+              - generic [ref=e35]: "Task: SW_DESIGN"
+              - generic [ref=e36]:
+                - text: "Confidence:"
+                - generic [ref=e37]: 100%
+        - generic [ref=e39]:
+          - heading "Proposed Changes" [level=2] [ref=e40]
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - generic [ref=e43]: Mark as complete
+              - generic [ref=e44]: "Task: SW_DESIGN • Field: progress"
+              - generic [ref=e45]:
+                - generic [ref=e46]: "- 100"
+                - generic [ref=e47]: + 100
+            - generic [ref=e48]:
+              - generic [ref=e49]: Set status to complete
+              - generic [ref=e50]: "Task: SW_DESIGN • Field: status"
+              - generic [ref=e51]:
+                - generic [ref=e52]: "- \"complete\""
+                - generic [ref=e53]: + "complete"
+          - button "Apply Changes" [ref=e54] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e60] [cursor=pointer]:
+    - img [ref=e61]
+  - alert [ref=e64]
+```

@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Schedule Editor" [level=1] [ref=e6]
+        - link "Back to Viewer" [ref=e7] [cursor=pointer]:
+          - /url: /
+    - main [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - heading "Natural Language Commands" [level=2] [ref=e12]
+            - textbox "e.g., SW_IMPL is 75%" [ref=e14]: extend HW_PROTO by 5 days
+            - button "Parse Command" [active] [ref=e15] [cursor=pointer]
+            - generic [ref=e16]:
+              - heading "Example Commands:" [level=3] [ref=e17]
+              - generic [ref=e18]:
+                - generic [ref=e19]:
+                  - text: •
+                  - code [ref=e20]: SW_IMPL is 75%
+                - generic [ref=e21]:
+                  - text: •
+                  - code [ref=e22]: mark SW_DESIGN complete
+                - generic [ref=e23]:
+                  - text: •
+                  - code [ref=e24]: extend HW_PROTO by 5 days
+                - generic [ref=e25]:
+                  - text: •
+                  - code [ref=e26]: "HW_PROTO is at risk: vendor delayed"
+                - generic [ref=e27]:
+                  - text: •
+                  - code [ref=e28]: SW_IMPL started 2025-03-28
+                - generic [ref=e29]:
+                  - text: •
+                  - code [ref=e30]: show critical path
+          - generic [ref=e31]:
+            - heading "Parsed Command" [level=2] [ref=e32]
+            - generic [ref=e33]:
+              - generic [ref=e34]: "Intent: extend_duration"
+              - generic [ref=e35]: "Task: HW_PROTO"
+              - generic [ref=e36]:
+                - text: "Confidence:"
+                - generic [ref=e37]: 100%
+              - generic [ref=e38]: "Value: 5"
+        - generic [ref=e40]:
+          - heading "Proposed Changes" [level=2] [ref=e41]
+          - generic [ref=e43]:
+            - generic [ref=e44]: Extend duration by 5 days
+            - generic [ref=e45]: "Task: HW_PROTO • Field: duration"
+            - generic [ref=e46]:
+              - generic [ref=e47]: "- 35"
+              - generic [ref=e48]: + 40
+          - button "Apply Changes" [ref=e49] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e55] [cursor=pointer]:
+    - img [ref=e56]
+  - alert [ref=e59]
+```
