@@ -241,7 +241,7 @@ export default function GanttChart({
                 )}
 
                 {/* Baseline bar (ghost) */}
-                {showBaseline && task.baseline && task.baseline.start && task.baseline.finish && (
+                {showBaseline && task.baseline && (
                   <div
                     className="absolute h-3 bg-gray-300 opacity-40 rounded top-7"
                     style={{
@@ -276,8 +276,8 @@ export default function GanttChart({
                     <div className="hidden group-hover:block absolute bottom-full mb-2 left-0 bg-gray-800 text-white text-xs rounded p-2 whitespace-nowrap z-30">
                       <div className="font-semibold">{task.name}</div>
                       <div>
-                        {task.start_date && format(task.start_date, 'MMM d')} -{' '}
-                        {task.end_date && format(task.end_date, 'MMM d, yyyy')}
+                        {task.start_date instanceof Date && format(task.start_date, 'MMM d')} -{' '}
+                        {task.end_date instanceof Date && format(task.end_date, 'MMM d, yyyy')}
                       </div>
                       <div>{task.duration} days</div>
                       {task.progress > 0 && <div>{task.progress}% complete</div>}

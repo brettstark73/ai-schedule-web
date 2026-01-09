@@ -72,6 +72,17 @@ export default function HomePage() {
   const { start, end, duration } = schedule.getProjectDates();
   const tasks = Array.from(schedule.tasks.values());
 
+  // Safely format dates
+  const formatDate = (date: any): string => {
+    if (!date) return 'N/A';
+    if (date instanceof Date) return date.toLocaleDateString();
+    if (typeof date === 'string') return date;
+    return String(date);
+  };
+
+  const startStr = formatDate(start);
+  const endStr = formatDate(end);
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -84,7 +95,7 @@ export default function HomePage() {
               </h1>
               <p className="text-sm text-gray-600 mt-1">
                 {schedule.project_id && `${schedule.project_id} • `}
-                Updated: {schedule.updated}
+                Updated: {String(schedule.updated)}
               </p>
             </div>
             <div className="flex gap-4">
@@ -142,7 +153,7 @@ export default function HomePage() {
             <div className="text-sm text-gray-600">Duration</div>
             <div className="mt-2 text-2xl font-bold">{duration} days</div>
             <div className="text-xs text-gray-500">
-              {start.toLocaleDateString()} - {end.toLocaleDateString()}
+              {startStr} - {endStr}
             </div>
           </div>
 
@@ -238,7 +249,7 @@ export default function HomePage() {
                         <span className="text-gray-500 text-sm ml-2">[{task.id}]</span>
                       </div>
                       <div className="text-gray-600">
-                        {task.end_date?.toLocaleDateString()}
+                        {formatDate(task.end_date)}
                         {task.progress === 100 && (
                           <span className="ml-2 text-green-600">✅</span>
                         )}

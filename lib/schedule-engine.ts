@@ -282,31 +282,41 @@ export class HierarchicalSchedule {
       };
       this.tasks.set(phase.id, phaseTask);
 
-      // Parse workstreams
-      for (const ws of phase.workstreams || []) {
-        this.workstreams.push(ws.id);
+      // Handle phases with workstreams (3-level hierarchy)
+      if ((phase as any).workstreams) {
+        for (const ws of (phase as any).workstreams || []) {
+          this.workstreams.push(ws.id);
 
-        const wsTask: Task = {
-          id: ws.id,
-          name: ws.name,
-          duration: 0,
-          level: 2,
-          parent_id: phase.id,
-          phase_id: phase.id,
-          dependencies: [],
-          successors: [],
-          progress: 0,
-          status: TaskStatus.NOT_STARTED,
-          status_note: '',
-          milestone: false,
-          is_critical: false,
-          float_days: 0
-        };
-        this.tasks.set(ws.id, wsTask);
+          const wsTask: Task = {
+            id: ws.id,
+            name: ws.name,
+            duration: 0,
+            level: 2,
+            parent_id: phase.id,
+            phase_id: phase.id,
+            dependencies: [],
+            successors: [],
+            progress: 0,
+            status: TaskStatus.NOT_STARTED,
+            status_note: '',
+            milestone: false,
+            is_critical: false,
+            float_days: 0
+          };
+          this.tasks.set(ws.id, wsTask);
 
-        // Parse tasks
-        for (const taskData of ws.tasks || []) {
-          const task = this.parseTask(taskData, phase.id, ws.id, baselineTasks);
+          // Parse tasks
+          for (const taskData of ws.tasks || []) {
+            const task = this.parseTask(taskData, phase.id, ws.id, baselineTasks);
+            this.tasks.set(task.id, task);
+          }
+        }
+      }
+      // Handle phases with direct tasks (2-level hierarchy)
+      else if ((phase as any).tasks) {
+        for (const taskData of (phase as any).tasks || []) {
+          const task = this.parseTask(taskData, phase.id, undefined, baselineTasks);
+          // Keep as level 3, just with no workstream (matching Python implementation)
           this.tasks.set(task.id, task);
         }
       }
@@ -323,7 +333,7 @@ export class HierarchicalSchedule {
   private parseTask(
     taskData: any,
     phaseId: string,
-    wsId: string,
+    wsId: string | undefined,
     baselineTasks: Record<string, { start: string; finish: string }>
   ): Task {
     const task: Task = {
@@ -564,17 +574,12 @@ export class HierarchicalSchedule {
 
       task.start_date = earlyStart;
 
-      // Calculate finish based on progress
-      if (task.progress === 100) {
-        // Complete - use actual or calculated
-        task.end_date = task.actual_finish || this.addDuration(earlyStart, task.duration);
-      } else if (task.progress > 0 && task.actual_start) {
-        // In progress - forecast remaining work
-        const elapsedDays = this.calendar.workingDaysBetween(task.actual_start, new Date());
-        const remainingDays = Math.ceil((task.duration * (100 - task.progress)) / 100);
-        task.end_date = this.calendar.addWorkingDays(new Date(), remainingDays);
+      // Calculate finish date
+      if (task.progress === 100 && task.actual_finish) {
+        // Complete - use actual finish date
+        task.end_date = task.actual_finish;
       } else {
-        // Not started - use duration
+        // Use planned duration (don't forecast based on current date)
         task.end_date = this.addDuration(earlyStart, task.duration);
       }
 
@@ -647,19 +652,23 @@ export class HierarchicalSchedule {
       );
     }
 
-    // Roll up phase dates from workstreams
+    // Roll up phase dates from workstreams OR direct level-3 tasks
     for (const phaseId of this.phases) {
       const phase = this.tasks.get(phaseId);
       if (!phase) continue;
 
-      const phaseWs = Array.from(this.tasks.values()).filter(
-        t => t.phase_id === phaseId && t.level === 2
+      // Get workstreams (level 2) or direct tasks (level 3 with no workstream) in this phase
+      const phaseChildren = Array.from(this.tasks.values()).filter(
+        t => t.phase_id === phaseId && (
+          (t.level === 2 && this.workstreams.includes(t.id)) ||  // Workstream summaries
+          (t.level === 3 && !t.workstream_id)  // Direct phase tasks (no workstream)
+        )
       );
 
-      if (phaseWs.length === 0) continue;
+      if (phaseChildren.length === 0) continue;
 
-      const starts = phaseWs.map(t => t.start_date).filter(Boolean) as Date[];
-      const ends = phaseWs.map(t => t.end_date).filter(Boolean) as Date[];
+      const starts = phaseChildren.map(t => t.start_date).filter(Boolean) as Date[];
+      const ends = phaseChildren.map(t => t.end_date).filter(Boolean) as Date[];
 
       if (starts.length > 0) {
         phase.start_date = new Date(Math.min(...starts.map(d => d.getTime())));
@@ -672,10 +681,10 @@ export class HierarchicalSchedule {
       }
 
       // Roll up progress
-      const totalDuration = phaseWs.reduce((sum, t) => sum + t.duration, 0);
+      const totalDuration = phaseChildren.reduce((sum, t) => sum + t.duration, 0);
       if (totalDuration > 0) {
         phase.progress = Math.round(
-          phaseWs.reduce((sum, t) => sum + t.progress * t.duration, 0) / totalDuration
+          phaseChildren.reduce((sum, t) => sum + t.progress * t.duration, 0) / totalDuration
         );
       }
 
@@ -687,7 +696,7 @@ export class HierarchicalSchedule {
         [TaskStatus.COMPLETE]: 1,
         [TaskStatus.NOT_STARTED]: 0
       };
-      phase.status = phaseWs.reduce(
+      phase.status = phaseChildren.reduce(
         (worst: TaskStatus, t) => (statusPriority[t.status] > statusPriority[worst] ? t.status : worst),
         TaskStatus.NOT_STARTED
       );
@@ -699,7 +708,7 @@ export class HierarchicalSchedule {
   // ============================================================================
 
   private calculateCriticalPath(): void {
-    // Get project end date
+    // Get project end date from all leaf tasks (level 3 only)
     const allEndDates = Array.from(this.tasks.values())
       .filter(t => t.level === 3 && t.end_date)
       .map(t => t.end_date as Date);

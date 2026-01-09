@@ -64,7 +64,8 @@ phases:
       - id: ARCH_SYS
         name: System Architecture
         duration: 15
-        depends_on: [REQ_SYS]
+        depends_on:
+          - id: REQ_SYS
         progress: 100
         status: complete
         actual_start: 2025-02-17
@@ -75,7 +76,8 @@ phases:
         name: Preliminary Design Review
         duration: 0
         milestone: true
-        depends_on: [ARCH_SYS]
+        depends_on:
+          - id: ARCH_SYS
         progress: 100
         status: complete
         actual_finish: 2025-03-05
@@ -89,7 +91,8 @@ phases:
           - id: SW_DESIGN
             name: SW Detailed Design
             duration: 30
-            depends_on: [ARCH_SYS]
+            depends_on:
+              - id: ARCH_SYS
             progress: 100
             status: complete
             actual_start: 2025-02-17
@@ -113,7 +116,8 @@ phases:
           - id: HW_DESIGN
             name: HW Detailed Design
             duration: 30
-            depends_on: [ARCH_SYS]
+            depends_on:
+              - id: ARCH_SYS
             progress: 100
             status: complete
             actual_start: 2025-02-17
@@ -123,7 +127,8 @@ phases:
           - id: HW_PROTO
             name: Prototype Build
             duration: 35                    # Extended from 30 to 35
-            depends_on: [HW_DESIGN]
+            depends_on:
+              - id: HW_DESIGN
             progress: 40
             status: at_risk
             status_note: "Vendor capacity constrained, parts delayed"
@@ -137,7 +142,9 @@ phases:
             name: Critical Design Review
             duration: 0
             milestone: true
-            depends_on: [SW_DESIGN, HW_DESIGN]
+            depends_on:
+              - id: SW_DESIGN
+              - id: HW_DESIGN
             progress: 100
             status: complete
             actual_finish: 2025-03-26
@@ -145,7 +152,9 @@ phases:
           - id: INT_HWSW
             name: HW/SW Integration
             duration: 20
-            depends_on: [SW_IMPL, HW_PROTO]
+            depends_on:
+              - id: SW_IMPL
+              - id: HW_PROTO
             progress: 0
             status: not_started
             owner: "Integration Team"
@@ -167,12 +176,14 @@ phases:
         name: DVT Exit Review
         duration: 0
         milestone: true
-        depends_on: [DVT]
+        depends_on:
+          - id: DVT
 
       - id: PVT
         name: Production Validation Testing
         duration: 15
-        depends_on: [DVT]
+        depends_on:
+          - id: DVT
         progress: 0
         status: not_started
         constraint:
@@ -185,4 +196,5 @@ phases:
         name: PVT Exit / SOP Ready
         duration: 0
         milestone: true
-        depends_on: [PVT]
+        depends_on:
+          - id: PVT
