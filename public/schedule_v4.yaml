@@ -1,0 +1,188 @@
+# schedule.yaml - AI Schedule Tool v2
+# Demonstrates all v2 features: calendar, lag, constraints, actuals, baseline
+
+project:
+  name: "Widget Product Development"
+  id: WPD-2025
+  updated: 2025-01-08
+  start_date: 2025-01-20
+  status: yellow
+  status_summary: "HW prototype at risk due to vendor capacity"
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays:
+    - 2025-05-26    # Memorial Day
+    - 2025-07-04    # Independence Day
+    - 2025-09-01    # Labor Day
+  duration_unit: working_days
+
+baseline:
+  captured_on: 2025-01-15
+  tasks:
+    REQ_SYS:
+      start: 2025-01-20
+      finish: 2025-02-14
+    ARCH_SYS:
+      start: 2025-02-17
+      finish: 2025-03-07
+    SW_DESIGN:
+      start: 2025-02-17
+      finish: 2025-03-28
+    SW_IMPL:
+      start: 2025-03-31
+      finish: 2025-06-06
+    HW_DESIGN:
+      start: 2025-02-17
+      finish: 2025-03-28
+    HW_PROTO:
+      start: 2025-03-31
+      finish: 2025-05-09
+    INT_HWSW:
+      start: 2025-06-09
+      finish: 2025-07-04
+    DVT:
+      start: 2025-07-07
+      finish: 2025-08-01
+    PVT:
+      start: 2025-08-04
+      finish: 2025-08-22
+
+phases:
+  - id: PLANNING
+    name: Planning & Requirements
+    tasks:
+      - id: REQ_SYS
+        name: System Requirements
+        duration: 20
+        progress: 100
+        status: complete
+        actual_start: 2025-01-20
+        actual_finish: 2025-02-14
+        owner: "Systems Team"
+
+      - id: ARCH_SYS
+        name: System Architecture
+        duration: 15
+        depends_on: [REQ_SYS]
+        progress: 100
+        status: complete
+        actual_start: 2025-02-17
+        actual_finish: 2025-03-05
+        owner: "Architecture Team"
+
+      - id: PDR
+        name: Preliminary Design Review
+        duration: 0
+        milestone: true
+        depends_on: [ARCH_SYS]
+        progress: 100
+        status: complete
+        actual_finish: 2025-03-05
+
+  - id: DEVELOPMENT
+    name: Development Phase
+    workstreams:
+      - id: SOFTWARE
+        name: Software Development
+        tasks:
+          - id: SW_DESIGN
+            name: SW Detailed Design
+            duration: 30
+            depends_on: [ARCH_SYS]
+            progress: 100
+            status: complete
+            actual_start: 2025-02-17
+            actual_finish: 2025-03-25
+            owner: "SW Architecture"
+
+          - id: SW_IMPL
+            name: SW Implementation
+            duration: 45
+            depends_on:
+              - id: SW_DESIGN
+                lag: 2              # 2 working days after SW_DESIGN
+            progress: 60
+            status: on_track
+            actual_start: 2025-03-27
+            owner: "SW Dev Team"
+
+      - id: HARDWARE
+        name: Hardware Development
+        tasks:
+          - id: HW_DESIGN
+            name: HW Detailed Design
+            duration: 30
+            depends_on: [ARCH_SYS]
+            progress: 100
+            status: complete
+            actual_start: 2025-02-17
+            actual_finish: 2025-03-26
+            owner: "HW Engineering"
+
+          - id: HW_PROTO
+            name: Prototype Build
+            duration: 35                    # Extended from 30 to 35
+            depends_on: [HW_DESIGN]
+            progress: 40
+            status: at_risk
+            status_note: "Vendor capacity constrained, parts delayed"
+            actual_start: 2025-03-27
+            owner: "HW Engineering"
+
+      - id: INTEGRATION
+        name: Integration
+        tasks:
+          - id: CDR
+            name: Critical Design Review
+            duration: 0
+            milestone: true
+            depends_on: [SW_DESIGN, HW_DESIGN]
+            progress: 100
+            status: complete
+            actual_finish: 2025-03-26
+
+          - id: INT_HWSW
+            name: HW/SW Integration
+            duration: 20
+            depends_on: [SW_IMPL, HW_PROTO]
+            progress: 0
+            status: not_started
+            owner: "Integration Team"
+
+  - id: VALIDATION
+    name: Validation Phase
+    tasks:
+      - id: DVT
+        name: Design Validation Testing
+        duration: 20
+        depends_on:
+          - id: INT_HWSW
+            lag: 1                  # 1 day buffer after integration
+        progress: 0
+        status: not_started
+        owner: "Test Team"
+
+      - id: DVT_EXIT
+        name: DVT Exit Review
+        duration: 0
+        milestone: true
+        depends_on: [DVT]
+
+      - id: PVT
+        name: Production Validation Testing
+        duration: 15
+        depends_on: [DVT]
+        progress: 0
+        status: not_started
+        constraint:
+          type: no_earlier_than
+          date: 2025-08-01
+          reason: "Production line availability"
+        owner: "Manufacturing"
+
+      - id: PVT_EXIT
+        name: PVT Exit / SOP Ready
+        duration: 0
+        milestone: true
+        depends_on: [PVT]
