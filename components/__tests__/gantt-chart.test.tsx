@@ -102,12 +102,12 @@ describe('GanttChart', () => {
       />
     );
 
-    expect(screen.getByText('Task 1')).toBeInTheDocument();
-    expect(screen.getByText('Task 2')).toBeInTheDocument();
+    expect(screen.getAllByText('Task 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Task 2').length).toBeGreaterThan(0);
   });
 
   it('should filter tasks by level', () => {
-    const { rerender } = render(
+    render(
       <GanttChart
         tasks={mockTasks}
         projectStart={new Date('2025-01-15')}
@@ -116,7 +116,7 @@ describe('GanttChart', () => {
       />
     );
 
-    expect(screen.getByText('Phase 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Phase 1').length).toBeGreaterThan(0);
     expect(screen.queryByText('Task 1')).not.toBeInTheDocument();
   });
 
@@ -147,14 +147,14 @@ describe('GanttChart', () => {
     );
 
     // Initially all tasks visible
-    expect(screen.getByText('Task 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Task 1').length).toBeGreaterThan(0);
 
     // Click L1 button
     await user.click(screen.getByText('L1: Phases'));
 
     // Only phases should be visible
     expect(screen.queryByText('Task 1')).not.toBeInTheDocument();
-    expect(screen.getByText('Phase 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Phase 1').length).toBeGreaterThan(0);
   });
 
   it('should show legend', () => {

@@ -4,6 +4,9 @@ import { NextRequest } from 'next/server';
 
 // Mock fs/promises
 vi.mock('fs/promises', () => ({
+  default: {
+    readFile: vi.fn()
+  },
   readFile: vi.fn()
 }));
 

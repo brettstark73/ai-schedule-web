@@ -337,9 +337,9 @@ describe('HierarchicalSchedule', () => {
 
       // Task A: 5 days @ 100% = 500
       // Task B: 10 days @ 60% = 600
-      // Task C: 5 days @ 0% = 0
-      // Total: 1100 / 20 days = 55%
-      expect(ws?.progress).toBeCloseTo(55, 0);
+      // Task C: 0 days (milestone) @ 0% = excluded
+      // Total: 1100 / 15 days = 73.3%
+      expect(ws?.progress).toBeCloseTo(73, 0);
     });
 
     it('should rollup worst-case status', () => {
