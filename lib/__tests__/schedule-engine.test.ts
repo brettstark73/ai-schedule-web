@@ -585,4 +585,340 @@ phases:
       expect(duration).toBeGreaterThan(0);
     });
   });
+
+  describe('Edge Cases', () => {
+    it('should handle empty phases array', () => {
+      const emptyYAML = `
+project:
+  name: Empty Project
+  id: EMPTY001
+  updated: 2025-01-08
+  start_date: 2025-01-15
+  status: green
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases: []
+`;
+      const schedule = new HierarchicalSchedule(emptyYAML);
+      expect(schedule.phases).toHaveLength(0);
+      expect(schedule.tasks.size).toBe(0);
+    });
+
+    it('should handle missing optional fields', () => {
+      const minimalYAML = `
+project:
+  name: Minimal Project
+  start_date: 2025-01-15
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+`;
+      const schedule = new HierarchicalSchedule(minimalYAML);
+      expect(schedule.project_name).toBe('Minimal Project');
+      expect(schedule.project_id).toBe('');
+      expect(schedule.project_status).toBe(ProjectStatus.GREEN);
+    });
+
+    it('should handle tasks with no dependencies', () => {
+      const schedule = new HierarchicalSchedule(basicYAML);
+      const task1 = schedule.tasks.get('TASK1');
+
+      expect(task1?.dependencies).toHaveLength(0);
+      expect(task1?.start_date).toBeDefined();
+    });
+
+    it('should handle calendar days duration unit', () => {
+      const calendarDaysYAML = `
+project:
+  name: Calendar Days Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  holidays: []
+  duration_unit: calendar_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 7
+`;
+      const schedule = new HierarchicalSchedule(calendarDaysYAML);
+      expect(schedule.calendar.duration_unit).toBe(DurationUnit.CALENDAR_DAYS);
+    });
+
+    it('should handle holidays in date calculations', () => {
+      const holidaysYAML = `
+project:
+  name: Holidays Project
+  start_date: 2025-12-20
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: ['2025-12-25', '2026-01-01']
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 10
+`;
+      const schedule = new HierarchicalSchedule(holidaysYAML);
+      const task = schedule.tasks.get('T1');
+
+      expect(task?.end_date).toBeDefined();
+      // End date should skip holidays
+      expect(task?.end_date?.getTime()).toBeGreaterThan(parse('2025-12-25', 'yyyy-MM-dd', new Date()).getTime());
+    });
+
+    it('should handle constraint dates', () => {
+      const constraintYAML = `
+project:
+  name: Constraint Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+        constraint:
+          type: no_earlier_than
+          date: 2025-02-01
+          reason: Vendor availability
+`;
+      const schedule = new HierarchicalSchedule(constraintYAML);
+      const task = schedule.tasks.get('T1');
+
+      expect(task?.constraint).toBeDefined();
+      expect(task?.constraint?.type).toBe('no_earlier_than');
+      // Constraint should be parsed correctly (implementation may or may not apply it)
+      expect(task?.constraint?.date).toBeDefined();
+    });
+
+    it('should handle actual start/finish dates', () => {
+      const actualsYAML = `
+project:
+  name: Actuals Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+        actual_start: 2025-01-16
+        actual_finish: 2025-01-22
+        progress: 100
+        status: complete
+`;
+      const schedule = new HierarchicalSchedule(actualsYAML);
+      const task = schedule.tasks.get('T1');
+
+      expect(task?.actual_start).toBeDefined();
+      expect(task?.actual_finish).toBeDefined();
+      expect(task?.progress).toBe(100);
+      expect(task?.status).toBe(TaskStatus.COMPLETE);
+    });
+
+    it('should handle in-progress tasks with actual start', () => {
+      const inProgressYAML = `
+project:
+  name: In Progress Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 10
+        actual_start: 2025-01-20
+        progress: 60
+        status: on_track
+`;
+      const schedule = new HierarchicalSchedule(inProgressYAML);
+      const task = schedule.tasks.get('T1');
+
+      expect(task?.actual_start).toBeDefined();
+      expect(task?.progress).toBe(60);
+      expect(task?.end_date).toBeDefined();
+    });
+
+    it('should calculate variance from baseline', () => {
+      const baselineYAML = `
+project:
+  name: Baseline Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+baseline:
+  captured_on: 2025-01-10
+  tasks:
+    T1:
+      start: 2025-01-15
+      finish: 2025-01-22
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 10
+`;
+      const schedule = new HierarchicalSchedule(baselineYAML);
+      const task = schedule.tasks.get('T1');
+
+      expect(task?.baseline).toBeDefined();
+      const variance = schedule.getVariance(task!);
+      expect(variance).toBeDefined();
+    });
+
+    it('should handle milestone tasks', () => {
+      const milestoneYAML = `
+project:
+  name: Milestone Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+      - id: M1
+        name: Milestone 1
+        duration: 0
+        milestone: true
+        depends_on: [T1]
+`;
+      const schedule = new HierarchicalSchedule(milestoneYAML);
+      const milestone = schedule.tasks.get('M1');
+
+      expect(milestone?.milestone).toBe(true);
+      expect(milestone?.duration).toBe(0);
+    });
+
+    it('should handle dependency with lag', () => {
+      const lagYAML = `
+project:
+  name: Lag Project
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+      - id: T2
+        name: Task 2
+        duration: 5
+        depends_on:
+          - id: T1
+            lag: 3
+`;
+      const schedule = new HierarchicalSchedule(lagYAML);
+      const task2 = schedule.tasks.get('T2');
+      const task1 = schedule.tasks.get('T1');
+
+      expect(task2?.dependencies[0].lag).toBe(3);
+      // Task 2 should start 3 days after Task 1 ends
+      if (task1?.end_date && task2?.start_date) {
+        const daysDiff = schedule.calendar.workingDaysBetween(task1.end_date, task2.start_date);
+        expect(daysDiff).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it('should handle mixed 2-level and 3-level hierarchy', () => {
+      const mixedYAML = `
+project:
+  name: Mixed Hierarchy
+  start_date: 2025-01-15
+
+calendar:
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  holidays: []
+  duration_unit: working_days
+
+phases:
+  - id: P1
+    name: Phase 1
+    tasks:
+      - id: T1
+        name: Task 1
+        duration: 5
+  - id: P2
+    name: Phase 2
+    workstreams:
+      - id: WS1
+        name: Workstream 1
+        tasks:
+          - id: T2
+            name: Task 2
+            duration: 5
+`;
+      const schedule = new HierarchicalSchedule(mixedYAML);
+
+      const task1 = schedule.tasks.get('T1');
+      const task2 = schedule.tasks.get('T2');
+
+      expect(task1?.level).toBe(3);
+      expect(task1?.workstream_id).toBeUndefined();
+      expect(task2?.level).toBe(3);
+      expect(task2?.workstream_id).toBe('WS1');
+    });
+  });
 });

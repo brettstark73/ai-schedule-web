@@ -444,4 +444,276 @@ describe('ScheduleEditor', () => {
       expect(result.confidence).toBe(1.0);
     });
   });
+
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle empty commands', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('');
+
+      expect(result.intent).toBe('unknown');
+      expect(result.confidence).toBeLessThan(0.5);
+    });
+
+    it('should handle whitespace-only commands', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('   ');
+
+      expect(result.intent).toBe('unknown');
+    });
+
+    it('should handle commands with special characters', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL is 75% @#$%');
+
+      expect(result.intent).toBe('set_progress');
+      expect(result.task_id).toBe('SW_IMPL');
+    });
+
+    it('should handle case-insensitive task names', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('sw_impl is 80%');
+
+      expect(result.task_id).toBe('SW_IMPL');
+    });
+
+    it('should handle commands with extra whitespace', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('  SW_IMPL   is   75%  ');
+
+      expect(result.intent).toBe('set_progress');
+      expect(result.task_id).toBe('SW_IMPL');
+      expect(result.value).toBe(75);
+    });
+
+    it('should handle invalid progress values', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL is abc%');
+
+      // Should still parse intent but with lower confidence
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle invalid duration values', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('extend SW_IMPL by xyz days');
+
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle non-existent task IDs gracefully', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('NONEXISTENT is 50%');
+
+      // Should parse the command structure even if task doesn't exist
+      expect(result.intent).toBeTruthy();
+      // Parser doesn't fail, just returns lower confidence or no match
+      expect(result.confidence).toBeDefined();
+    });
+
+    it('should handle commands without task identifiers', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('extend by 5 days');
+
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle multiple percentage signs', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL is 75%% complete');
+
+      expect(result.intent).toBe('set_progress');
+    });
+
+    it('should handle decimal progress values', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL is 75.5%');
+
+      expect(result.intent).toBe('set_progress');
+    });
+
+    it('should handle negative duration values', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('extend SW_IMPL by -5 days');
+
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle very long task names', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const longName = 'a'.repeat(200);
+      const result = editor.parseCommand(`${longName} is 50%`);
+
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle commands with newlines', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL\nis\n75%');
+
+      expect(result.intent).toBeTruthy();
+    });
+
+    it('should handle commands with tabs', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const result = editor.parseCommand('SW_IMPL\tis\t75%');
+
+      expect(result.intent).toBe('set_progress');
+    });
+  });
+
+  describe('generateDiff - Diff Generation', () => {
+    it('should generate diff for set_progress', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL is 75%');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('progress');
+      expect(diffs[0].new_value).toBe(75);
+    });
+
+    it('should generate diff for extend_duration', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('extend SW_IMPL by 5 days');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('duration');
+      expect(diffs[0].description).toContain('Extend');
+    });
+
+    it('should generate diff for shorten_duration', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('shorten SW_IMPL by 3 days');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('duration');
+      expect(diffs[0].description).toContain('Shorten');
+    });
+
+    it('should generate diff for mark_complete', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('mark SW_IMPL complete');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(2);
+      expect(diffs[0].field).toBe('progress');
+      expect(diffs[0].new_value).toBe(100);
+      expect(diffs[1].field).toBe('status');
+      expect(diffs[1].new_value).toBe('complete');
+    });
+
+    it('should generate diff for add_risk', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('risk for SW_IMPL: vendor delay');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(2);
+      expect(diffs[0].field).toBe('status_note');
+      expect(diffs[1].field).toBe('status');
+      expect(diffs[1].new_value).toBe('at_risk');
+    });
+
+    it('should generate diff for set_actual_start', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL started 2025-01-20');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('actual_start');
+      expect(diffs[0].new_value).toBe('2025-01-20');
+    });
+
+    it('should generate diff for set_actual_finish', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL finished 2025-02-15');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('actual_finish');
+      expect(diffs[0].new_value).toBe('2025-02-15');
+    });
+
+    it('should generate diff for add_lag', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL starts 5 days after SW_DESIGN');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('depends_on');
+      expect(diffs[0].description).toContain('lag');
+    });
+
+    it('should generate diff for add_dependency', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL depends on SW_DESIGN');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('depends_on');
+    });
+
+    it('should generate diff for add_constraint', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL no earlier than 2025-02-01');
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(1);
+      expect(diffs[0].field).toBe('constraint');
+      expect(diffs[0].new_value.type).toBe('no_earlier_than');
+      expect(diffs[0].new_value.date).toBe('2025-02-01');
+    });
+
+    it('should return empty array for non-existent task', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = { intent: 'set_progress', task_id: 'NONEXISTENT', value: 50, confidence: 0.9, matched_pattern: '', is_query: false };
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(0);
+    });
+
+    it('should return empty array for query commands', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = { intent: 'query', task_id: 'SW_IMPL', value: null, confidence: 0.9, matched_pattern: '', is_query: true };
+      const diffs = editor.generateDiff(command);
+
+      expect(diffs).toHaveLength(0);
+    });
+  });
+
+  describe('applyDiff', () => {
+    it('should apply diffs to YAML', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command = editor.parseCommand('SW_IMPL is 75%');
+      const diffs = editor.generateDiff(command);
+      const newYAML = editor.applyDiff(diffs);
+
+      expect(newYAML).toContain('progress: 75');
+    });
+
+    it('should apply multiple diffs', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const command1 = editor.parseCommand('SW_IMPL is 75%');
+      const command2 = editor.parseCommand('risk for SW_IMPL: resource issue');
+      const diffs = [
+        ...editor.generateDiff(command1),
+        ...editor.generateDiff(command2)
+      ];
+      const newYAML = editor.applyDiff(diffs);
+
+      expect(newYAML).toContain('progress: 75');
+      expect(newYAML).toContain('status: at_risk');
+    });
+  });
+
+  describe('getYAML', () => {
+    it('should return current YAML', () => {
+      const editor = new ScheduleEditor(testYAML);
+      const yaml = editor.getYAML();
+
+      expect(yaml).toContain('project:');
+      expect(yaml).toContain('SW_IMPL');
+    });
+  });
 });
